@@ -1,5 +1,11 @@
 import { getConfig } from '../config.js';
 
+export interface Exchange {
+  id: number;
+  name: string;
+  exchange: string;
+}
+
 export interface User {
   id: number;
   name: string;
@@ -9,6 +15,7 @@ export interface User {
   timezone: string | null;
   last_seen: string | null;
   created_at: string;
+  exchanges: Exchange[];
 }
 
 export interface RoutineAction {
@@ -186,9 +193,10 @@ export class KripttyApiClient {
     });
   }
 
-  async runRoutine(id: string): Promise<{ message: string; data: Routine }> {
+  async runRoutine(id: string, exchange_id: number): Promise<{ message: string; data: Routine }> {
     return this.request<{ message: string; data: Routine }>(`/routines/${id}/run`, {
       method: 'POST',
+      body: JSON.stringify({ exchange_id }),
     });
   }
 }

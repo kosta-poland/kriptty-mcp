@@ -54,9 +54,13 @@ export async function listUsers(): Promise<string> {
     const client = getApiClient();
     const response = await client.listUsers();
 
-    const usersSummary = response.data.map(user =>
-      `- ID: ${user.id}, Name: ${user.name}, Email: ${user.email}, Admin: ${user.admin ? 'Yes' : 'No'}, Role: ${user.role}`
-    ).join('\n');
+    const usersSummary = response.data.map(user => {
+      const exchanges = user.exchanges?.length > 0
+        ? user.exchanges.map(e => `${e.name} (${e.exchange}, ID: ${e.id})`).join(', ')
+        : 'None';
+      return `- ID: ${user.id}, Name: ${user.name}, Email: ${user.email}, Admin: ${user.admin ? 'Yes' : 'No'}, Role: ${user.role}
+  Exchanges: ${exchanges}`;
+    }).join('\n');
 
     return `Users (Total: ${response.data.length}):\n\n${usersSummary}`;
   } catch (error) {

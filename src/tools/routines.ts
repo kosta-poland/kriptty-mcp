@@ -33,6 +33,7 @@ export const updateRoutineSchema = z.object({
 
 export const runRoutineSchema = z.object({
   id: z.string().uuid().describe('Routine ID (UUID)'),
+  exchange_id: z.number().int().positive().describe('Exchange ID to run routine on (get from list_users)'),
 });
 
 export type GetRoutineParametersParams = z.infer<typeof getRoutineParametersSchema>;
@@ -222,16 +223,20 @@ export async function updateRoutine(params: UpdateRoutineParams): Promise<string
 export async function runRoutine(params: RunRoutineParams): Promise<string> {
   try {
     const client = getApiClient();
-    const response = await client.runRoutine(params.id);
+    const response = await client.runRoutine(params.id, params.exchange_id);
 
     return `${response.message}
 - Routine: ${response.data.name}
+- Exchange ID: ${params.exchange_id}
 - Triggered At: ${response.data.triggered_at}
 - Triggered By: ${response.data.triggered_by}`;
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 404) {
         return `Routine with ID ${params.id} not found.`;
+      }
+      if (error.status === 422) {
+        return `Error: Exchange does not belong to routine owner or invalid exchange_id.`;
       }
       return `Error running routine: ${error.message}`;
     }

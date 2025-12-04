@@ -310,13 +310,14 @@ server.registerTool(
   'run_routine',
   {
     title: 'Run Routine',
-    description: 'Execute a routine to apply its configuration to all bots',
+    description: 'Execute a routine to apply its configuration to all bots on the specified exchange. Use list_users to find exchange IDs.',
     inputSchema: {
       id: z.string().uuid().describe('Routine ID (UUID)'),
+      exchange_id: z.number().int().positive().describe('Exchange ID to run routine on (get from list_users)'),
     },
   },
   async (params) => {
-    const result = await runRoutine({ id: params.id });
+    const result = await runRoutine({ id: params.id, exchange_id: params.exchange_id });
     return {
       content: [{ type: 'text', text: result }],
     };
