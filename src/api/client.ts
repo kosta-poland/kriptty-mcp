@@ -44,10 +44,116 @@ export interface GridSummary {
   name: string;
 }
 
+export interface ExchangeDetailed {
+  id: number;
+  user_id: number;
+  name: string;
+  slug: string;
+  exchange: string;
+  risk_mode: string;
+  is_testnet: boolean;
+  api_error: boolean;
+  usdt_balance: string | null;
+  usd_balance: string | null;
+  btc_balance: string | null;
+  eth_balance: string | null;
+  initial_usdt_balance: string | null;
+  initial_balance_recorded_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExchangeParameters {
+  exchanges: Record<string, string>;
+  risk_modes: Record<string, string>;
+  fields: {
+    required: string[];
+    optional: string[];
+    notes: Record<string, string>;
+  };
+}
+
 export interface RoutineParameters {
   grid_modes: Record<string, string>;
   bot_modes: Record<string, string>;
   grids: GridSummary[];
+}
+
+export interface SymbolSummary {
+  id: number;
+  name: string;
+  nice_name: string;
+  exchange: string;
+}
+
+export interface BotExchange {
+  id: number;
+  name: string;
+  slug: string;
+  exchange: string;
+}
+
+export interface BotSymbol {
+  id: number;
+  name: string;
+  nice_name: string;
+}
+
+export interface BotGrid {
+  id: number;
+  name: string;
+}
+
+export interface Bot {
+  id: number;
+  name: string;
+  market_type: string;
+  grid_mode: string;
+  lm: string;
+  lwe: number;
+  sm: string;
+  swe: number;
+  leverage: number;
+  assigned_balance: number;
+  oh_mode: boolean;
+  show_logs: boolean;
+  is_on_trend: boolean;
+  is_on_routines: boolean;
+  pid: number | null;
+  started_at: string | null;
+  stopped_at: string | null;
+  is_running: boolean;
+  user_id: number;
+  exchange_id: number;
+  grid_id: number | null;
+  symbol_id: number;
+  exchange?: BotExchange;
+  symbol?: BotSymbol;
+  grid?: BotGrid | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BotParameters {
+  bot_modes: Record<string, string>;
+  grid_modes: Record<string, string>;
+  market_types: Record<string, string>;
+  grids: GridSummary[];
+  symbols: SymbolSummary[];
+  fields: {
+    required: string[];
+    optional: string[];
+    notes: Record<string, string>;
+  };
+}
+
+export interface BotStatus {
+  id: number;
+  name: string;
+  pid: number | null;
+  is_running: boolean;
+  started_at: string | null;
+  stopped_at: string | null;
 }
 
 export interface PaginationLinks {
@@ -198,6 +304,158 @@ export class KripttyApiClient {
       method: 'POST',
       body: JSON.stringify({ exchange_id }),
     });
+  }
+
+  // Exchange endpoints
+  async getExchangeParameters(): Promise<SingleResponse<ExchangeParameters>> {
+    return this.request<SingleResponse<ExchangeParameters>>('/exchange-parameters');
+  }
+
+  async listExchanges(userId: number): Promise<{ data: ExchangeDetailed[] }> {
+    return this.request<{ data: ExchangeDetailed[] }>(`/exchanges?user_id=${userId}`);
+  }
+
+  async getExchange(id: number): Promise<SingleResponse<ExchangeDetailed>> {
+    return this.request<SingleResponse<ExchangeDetailed>>(`/exchanges/${id}`);
+  }
+
+  async createExchange(data: {
+    user_id: number;
+    name: string;
+    exchange: string;
+    risk_mode: string;
+    api_key: string;
+    api_secret: string;
+    api_frase?: string;
+    is_testnet?: boolean;
+  }): Promise<SingleResponse<ExchangeDetailed>> {
+    return this.request<SingleResponse<ExchangeDetailed>>('/exchanges', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateExchange(id: number, data: {
+    name?: string;
+    exchange?: string;
+    risk_mode?: string;
+    api_key?: string;
+    api_secret?: string;
+    api_frase?: string;
+    is_testnet?: boolean;
+  }): Promise<SingleResponse<ExchangeDetailed>> {
+    return this.request<SingleResponse<ExchangeDetailed>>(`/exchanges/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async refreshExchange(id: number): Promise<{ message: string; data: ExchangeDetailed }> {
+    return this.request<{ message: string; data: ExchangeDetailed }>(`/exchanges/${id}/refresh`, {
+      method: 'POST',
+    });
+  }
+
+  // Bot endpoints
+  async getBotParameters(): Promise<SingleResponse<BotParameters>> {
+    return this.request<SingleResponse<BotParameters>>('/bot-parameters');
+  }
+
+  async listBots(params: { user_id?: number; exchange_id?: number }): Promise<{ data: Bot[] }> {
+    const queryParams = new URLSearchParams();
+    if (params.user_id !== undefined) {
+      queryParams.append('user_id', params.user_id.toString());
+    }
+    if (params.exchange_id !== undefined) {
+      queryParams.append('exchange_id', params.exchange_id.toString());
+    }
+    return this.request<{ data: Bot[] }>(`/bots?${queryParams.toString()}`);
+  }
+
+  async getBot(id: number): Promise<SingleResponse<Bot>> {
+    return this.request<SingleResponse<Bot>>(`/bots/${id}`);
+  }
+
+  async createBot(data: {
+    name: string;
+    exchange_id: number;
+    symbol_id: number;
+    market_type: string;
+    grid_mode: string;
+    grid_id?: number;
+    lm: string;
+    lwe: number;
+    sm: string;
+    swe: number;
+    leverage?: number;
+    assigned_balance?: number;
+    oh_mode?: boolean;
+    show_logs?: boolean;
+    is_on_trend?: boolean;
+    is_on_routines?: boolean;
+  }): Promise<SingleResponse<Bot>> {
+    return this.request<SingleResponse<Bot>>('/bots', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateBot(id: number, data: {
+    name?: string;
+    symbol_id?: number;
+    market_type?: string;
+    grid_mode?: string;
+    grid_id?: number | null;
+    lm?: string;
+    lwe?: number;
+    sm?: string;
+    swe?: number;
+    leverage?: number;
+    assigned_balance?: number;
+    oh_mode?: boolean;
+    show_logs?: boolean;
+    is_on_trend?: boolean;
+    is_on_routines?: boolean;
+  }): Promise<SingleResponse<Bot>> {
+    return this.request<SingleResponse<Bot>>(`/bots/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async startBot(id: number): Promise<{ message: string; data: Bot }> {
+    return this.request<{ message: string; data: Bot }>(`/bots/${id}/start`, {
+      method: 'POST',
+    });
+  }
+
+  async stopBot(id: number): Promise<{ message: string; data: Bot }> {
+    return this.request<{ message: string; data: Bot }>(`/bots/${id}/stop`, {
+      method: 'POST',
+    });
+  }
+
+  async restartBot(id: number): Promise<{ message: string; data: Bot }> {
+    return this.request<{ message: string; data: Bot }>(`/bots/${id}/restart`, {
+      method: 'POST',
+    });
+  }
+
+  async swapBotWe(id: number, new_trend: 'LONG' | 'SHORT'): Promise<{ message: string; data: Bot }> {
+    return this.request<{ message: string; data: Bot }>(`/bots/${id}/swap-we`, {
+      method: 'POST',
+      body: JSON.stringify({ new_trend }),
+    });
+  }
+
+  async simpleSwapBotWe(id: number): Promise<{ message: string; data: Bot }> {
+    return this.request<{ message: string; data: Bot }>(`/bots/${id}/simple-swap-we`, {
+      method: 'POST',
+    });
+  }
+
+  async getBotStatus(id: number): Promise<SingleResponse<BotStatus>> {
+    return this.request<SingleResponse<BotStatus>>(`/bots/${id}/status`);
   }
 }
 

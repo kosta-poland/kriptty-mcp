@@ -22,6 +22,27 @@ import {
   updateRoutine,
   runRoutine,
 } from './tools/routines.js';
+import {
+  getExchangeParameters,
+  listExchanges,
+  getExchange,
+  createExchange,
+  updateExchange,
+  refreshExchange,
+} from './tools/exchanges.js';
+import {
+  getBotParameters,
+  listBots,
+  getBot,
+  createBot,
+  updateBot,
+  startBot,
+  stopBot,
+  restartBot,
+  swapBotWe,
+  simpleSwapBotWe,
+  getBotStatus,
+} from './tools/bots.js';
 
 const server = new McpServer({
   name: 'kriptty-mcp',
@@ -318,6 +339,391 @@ server.registerTool(
   },
   async (params) => {
     const result = await runRoutine({ id: params.id, exchange_id: params.exchange_id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+// Exchange tools
+server.registerTool(
+  'list_exchange_parameters',
+  {
+    title: 'List Exchange Parameters',
+    description: 'List available exchange types, risk modes, and field requirements',
+    inputSchema: {},
+  },
+  async () => {
+    const result = await getExchangeParameters();
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'list_exchanges',
+  {
+    title: 'List User Exchanges',
+    description: 'List all exchanges for a specific user',
+    inputSchema: {
+      user_id: z.number().int().positive().describe('User ID to list exchanges for'),
+    },
+  },
+  async (params) => {
+    const result = await listExchanges({ user_id: params.user_id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'get_exchange',
+  {
+    title: 'Get Exchange',
+    description: 'Get detailed information about a specific exchange',
+    inputSchema: {
+      id: z.number().int().positive().describe('Exchange ID'),
+    },
+  },
+  async (params) => {
+    const result = await getExchange({ id: params.id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'create_exchange',
+  {
+    title: 'Create Exchange',
+    description: 'Create a new exchange for a user with API credentials. Use list_exchange_parameters to see available options.',
+    inputSchema: {
+      user_id: z.number().int().positive().describe('User ID'),
+      name: z.string().min(1).max(255).describe('Exchange name'),
+      exchange: z.enum(['bybit', 'binance', 'binance_us', 'bitget', 'okx']).describe('Exchange type'),
+      risk_mode: z.enum(['1', '2', '3']).describe('Risk mode: 1=Conservative, 2=Moderate, 3=Kamikaze'),
+      api_key: z.string().min(1).max(100).describe('API key'),
+      api_secret: z.string().min(1).max(100).describe('API secret'),
+      api_frase: z.string().max(250).optional().describe('API passphrase (required for OKX)'),
+      is_testnet: z.boolean().optional().default(false).describe('Use testnet (Bybit only)'),
+    },
+  },
+  async (params) => {
+    const result = await createExchange({
+      user_id: params.user_id,
+      name: params.name,
+      exchange: params.exchange,
+      risk_mode: params.risk_mode,
+      api_key: params.api_key,
+      api_secret: params.api_secret,
+      api_frase: params.api_frase,
+      is_testnet: params.is_testnet ?? false,
+    });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'update_exchange',
+  {
+    title: 'Update Exchange',
+    description: 'Update an existing exchange. Only provided fields will be updated.',
+    inputSchema: {
+      id: z.number().int().positive().describe('Exchange ID'),
+      name: z.string().min(1).max(255).optional().describe('Exchange name'),
+      exchange: z.enum(['bybit', 'binance', 'binance_us', 'bitget', 'okx']).optional().describe('Exchange type'),
+      risk_mode: z.enum(['1', '2', '3']).optional().describe('Risk mode'),
+      api_key: z.string().min(1).max(100).optional().describe('API key'),
+      api_secret: z.string().min(1).max(100).optional().describe('API secret'),
+      api_frase: z.string().max(250).optional().describe('API passphrase'),
+      is_testnet: z.boolean().optional().describe('Use testnet'),
+    },
+  },
+  async (params) => {
+    const result = await updateExchange({
+      id: params.id,
+      name: params.name,
+      exchange: params.exchange,
+      risk_mode: params.risk_mode,
+      api_key: params.api_key,
+      api_secret: params.api_secret,
+      api_frase: params.api_frase,
+      is_testnet: params.is_testnet,
+    });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'refresh_exchange',
+  {
+    title: 'Refresh Exchange Connectivity',
+    description: 'Test exchange API connectivity by syncing balance. Updates api_error flag on failure.',
+    inputSchema: {
+      id: z.number().int().positive().describe('Exchange ID'),
+    },
+  },
+  async (params) => {
+    const result = await refreshExchange({ id: params.id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+// Bot tools
+server.registerTool(
+  'list_bot_parameters',
+  {
+    title: 'List Bot Parameters',
+    description: 'List available bot parameters (bot modes, grid modes, market types, grids, and symbols)',
+    inputSchema: {},
+  },
+  async () => {
+    const result = await getBotParameters();
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'list_bots',
+  {
+    title: 'List Bots',
+    description: 'List bots filtered by user_id or exchange_id. At least one filter is required.',
+    inputSchema: {
+      user_id: z.number().int().positive().optional().describe('User ID to list bots for'),
+      exchange_id: z.number().int().positive().optional().describe('Exchange ID to list bots for'),
+    },
+  },
+  async (params) => {
+    const result = await listBots({ user_id: params.user_id, exchange_id: params.exchange_id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'get_bot',
+  {
+    title: 'Get Bot',
+    description: 'Get detailed information about a specific bot',
+    inputSchema: {
+      id: z.number().int().positive().describe('Bot ID'),
+    },
+  },
+  async (params) => {
+    const result = await getBot({ id: params.id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'create_bot',
+  {
+    title: 'Create Bot',
+    description: 'Create a new bot. Use list_bot_parameters to see available options for symbol_id, grid_mode, etc.',
+    inputSchema: {
+      name: z.string().min(1).max(255).describe('Bot name'),
+      exchange_id: z.number().int().positive().describe('Exchange ID'),
+      symbol_id: z.number().int().positive().describe('Symbol ID (use list_bot_parameters to see available symbols)'),
+      market_type: z.enum(['futures', 'spot']).describe('Market type'),
+      grid_mode: z.enum(['recursive', 'neat', 'static', 'clock', 'custom']).describe('Grid mode'),
+      grid_id: z.number().int().positive().optional().describe('Grid ID (required when grid_mode is "custom")'),
+      lm: z.enum(['n', 'm', 'gs', 't', 'p']).describe('Long mode: n=normal, m=manual, gs=graceful stop, t=take profit, p=panic'),
+      lwe: z.number().min(0).max(11).describe('Long wallet exposure (0-11)'),
+      sm: z.enum(['n', 'm', 'gs', 't', 'p']).describe('Short mode: n=normal, m=manual, gs=graceful stop, t=take profit, p=panic'),
+      swe: z.number().min(0).max(11).describe('Short wallet exposure (0-11)'),
+      leverage: z.number().min(1).max(125).optional().describe('Leverage (default: 10)'),
+      assigned_balance: z.number().min(0).optional().describe('Assigned balance (default: 0 for no limit)'),
+      oh_mode: z.boolean().optional().describe('Order history mode (default: true)'),
+      show_logs: z.boolean().optional().describe('Show logs (default: true)'),
+      is_on_trend: z.boolean().optional().describe('Is on trend (default: false)'),
+      is_on_routines: z.boolean().optional().describe('Is on routines (default: false)'),
+    },
+  },
+  async (params) => {
+    const result = await createBot({
+      name: params.name,
+      exchange_id: params.exchange_id,
+      symbol_id: params.symbol_id,
+      market_type: params.market_type,
+      grid_mode: params.grid_mode,
+      grid_id: params.grid_id,
+      lm: params.lm,
+      lwe: params.lwe,
+      sm: params.sm,
+      swe: params.swe,
+      leverage: params.leverage,
+      assigned_balance: params.assigned_balance,
+      oh_mode: params.oh_mode,
+      show_logs: params.show_logs,
+      is_on_trend: params.is_on_trend,
+      is_on_routines: params.is_on_routines,
+    });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'update_bot',
+  {
+    title: 'Update Bot',
+    description: 'Update an existing bot. Only provided fields will be updated.',
+    inputSchema: {
+      id: z.number().int().positive().describe('Bot ID'),
+      name: z.string().min(1).max(255).optional().describe('Bot name'),
+      symbol_id: z.number().int().positive().optional().describe('Symbol ID'),
+      market_type: z.enum(['futures', 'spot']).optional().describe('Market type'),
+      grid_mode: z.enum(['recursive', 'neat', 'static', 'clock', 'custom']).optional().describe('Grid mode'),
+      grid_id: z.number().int().positive().nullable().optional().describe('Grid ID'),
+      lm: z.enum(['n', 'm', 'gs', 't', 'p']).optional().describe('Long mode'),
+      lwe: z.number().min(0).max(11).optional().describe('Long wallet exposure (0-11)'),
+      sm: z.enum(['n', 'm', 'gs', 't', 'p']).optional().describe('Short mode'),
+      swe: z.number().min(0).max(11).optional().describe('Short wallet exposure (0-11)'),
+      leverage: z.number().min(1).max(125).optional().describe('Leverage'),
+      assigned_balance: z.number().min(0).optional().describe('Assigned balance'),
+      oh_mode: z.boolean().optional().describe('Order history mode'),
+      show_logs: z.boolean().optional().describe('Show logs'),
+      is_on_trend: z.boolean().optional().describe('Is on trend'),
+      is_on_routines: z.boolean().optional().describe('Is on routines'),
+    },
+  },
+  async (params) => {
+    const result = await updateBot({
+      id: params.id,
+      name: params.name,
+      symbol_id: params.symbol_id,
+      market_type: params.market_type,
+      grid_mode: params.grid_mode,
+      grid_id: params.grid_id,
+      lm: params.lm,
+      lwe: params.lwe,
+      sm: params.sm,
+      swe: params.swe,
+      leverage: params.leverage,
+      assigned_balance: params.assigned_balance,
+      oh_mode: params.oh_mode,
+      show_logs: params.show_logs,
+      is_on_trend: params.is_on_trend,
+      is_on_routines: params.is_on_routines,
+    });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'start_bot',
+  {
+    title: 'Start Bot',
+    description: 'Start a stopped bot',
+    inputSchema: {
+      id: z.number().int().positive().describe('Bot ID'),
+    },
+  },
+  async (params) => {
+    const result = await startBot({ id: params.id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'stop_bot',
+  {
+    title: 'Stop Bot',
+    description: 'Stop a running bot',
+    inputSchema: {
+      id: z.number().int().positive().describe('Bot ID'),
+    },
+  },
+  async (params) => {
+    const result = await stopBot({ id: params.id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'restart_bot',
+  {
+    title: 'Restart Bot',
+    description: 'Restart a bot (stop and start)',
+    inputSchema: {
+      id: z.number().int().positive().describe('Bot ID'),
+    },
+  },
+  async (params) => {
+    const result = await restartBot({ id: params.id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'swap_bot_we',
+  {
+    title: 'Swap Bot Wallet Exposure',
+    description: 'Swap wallet exposure based on trend direction. Sets long WE to 0.06 and short WE to 0.03 for LONG trend, and vice versa for SHORT.',
+    inputSchema: {
+      id: z.number().int().positive().describe('Bot ID'),
+      new_trend: z.enum(['LONG', 'SHORT']).describe('New trend direction'),
+    },
+  },
+  async (params) => {
+    const result = await swapBotWe({ id: params.id, new_trend: params.new_trend });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'simple_swap_bot_we',
+  {
+    title: 'Simple Swap Bot Wallet Exposure',
+    description: 'Simply swap the long and short wallet exposure values with each other',
+    inputSchema: {
+      id: z.number().int().positive().describe('Bot ID'),
+    },
+  },
+  async (params) => {
+    const result = await simpleSwapBotWe({ id: params.id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'get_bot_status',
+  {
+    title: 'Get Bot Status',
+    description: 'Check if a bot process is currently running',
+    inputSchema: {
+      id: z.number().int().positive().describe('Bot ID'),
+    },
+  },
+  async (params) => {
+    const result = await getBotStatus({ id: params.id });
     return {
       content: [{ type: 'text', text: result }],
     };
