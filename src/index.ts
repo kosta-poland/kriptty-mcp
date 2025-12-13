@@ -43,6 +43,12 @@ import {
   simpleSwapBotWe,
   getBotStatus,
 } from './tools/bots.js';
+import {
+  listTrades,
+  getTrade,
+  listTradeSymbols,
+  getPnlStats,
+} from './tools/trades.js';
 
 const server = new McpServer({
   name: 'kriptty-mcp',
@@ -724,6 +730,97 @@ server.registerTool(
   },
   async (params) => {
     const result = await getBotStatus({ id: params.id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+// Trade tools
+server.registerTool(
+  'list_trades',
+  {
+    title: 'List Trades',
+    description: 'List trades for an exchange with optional filtering by symbol, date range, and sorting',
+    inputSchema: {
+      exchange_id: z.number().int().positive().describe('Exchange ID (required)'),
+      symbol: z.string().optional().describe('Filter by trading symbol (e.g., BTCUSDT)'),
+      from_date: z.string().optional().describe('Start date filter (YYYY-MM-DD)'),
+      to_date: z.string().optional().describe('End date filter (YYYY-MM-DD)'),
+      per_page: z.number().int().min(1).max(100).optional().describe('Records per page (default: 25, max: 100)'),
+      sort_by: z.enum(['id', 'symbol', 'side', 'qty', 'closed_pnl', 'order_price', 'leverage', 'created_at']).optional().describe('Column to sort by'),
+      sort_order: z.enum(['asc', 'desc']).optional().describe('Sort direction (default: desc)'),
+    },
+  },
+  async (params) => {
+    const result = await listTrades({
+      exchange_id: params.exchange_id,
+      symbol: params.symbol,
+      from_date: params.from_date,
+      to_date: params.to_date,
+      per_page: params.per_page,
+      sort_by: params.sort_by,
+      sort_order: params.sort_order,
+    });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'get_trade',
+  {
+    title: 'Get Trade',
+    description: 'Get detailed information about a specific trade',
+    inputSchema: {
+      id: z.number().int().positive().describe('Trade ID'),
+    },
+  },
+  async (params) => {
+    const result = await getTrade({ id: params.id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'list_trade_symbols',
+  {
+    title: 'List Trade Symbols',
+    description: 'Get list of unique symbols that have been traded on an exchange',
+    inputSchema: {
+      exchange_id: z.number().int().positive().describe('Exchange ID'),
+    },
+  },
+  async (params) => {
+    const result = await listTradeSymbols({ exchange_id: params.exchange_id });
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  }
+);
+
+server.registerTool(
+  'get_pnl_stats',
+  {
+    title: 'Get P&L Statistics',
+    description: 'Get profit and loss statistics aggregated by period (daily, monthly, yearly) for an exchange',
+    inputSchema: {
+      exchange_id: z.number().int().positive().describe('Exchange ID (required)'),
+      period: z.enum(['daily', 'monthly', 'yearly']).optional().describe('Aggregation period (default: daily)'),
+      month: z.number().int().min(1).max(12).optional().describe('Month filter for daily period (1-12)'),
+      year: z.number().int().min(2020).max(2100).optional().describe('Year filter'),
+    },
+  },
+  async (params) => {
+    const result = await getPnlStats({
+      exchange_id: params.exchange_id,
+      period: params.period,
+      month: params.month,
+      year: params.year,
+    });
     return {
       content: [{ type: 'text', text: result }],
     };

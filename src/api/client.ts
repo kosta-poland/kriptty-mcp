@@ -156,6 +156,62 @@ export interface BotStatus {
   stopped_at: string | null;
 }
 
+export interface Trade {
+  id: number;
+  exchange_id: number;
+  position_id: number;
+  symbol: string;
+  nice_name: string;
+  order_id: string;
+  order_oid: string | null;
+  side: string;
+  qty: string | null;
+  order_price: number | null;
+  order_type: string;
+  exec_type: string;
+  closed_size: string | null;
+  avg_entry_price: string | null;
+  avg_exit_price: string | null;
+  closed_pnl: string | null;
+  fill_count: number | null;
+  leverage: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TradeListParams {
+  exchange_id: number;
+  symbol?: string;
+  from_date?: string;
+  to_date?: string;
+  per_page?: number;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+export interface PnlStatsParams {
+  exchange_id: number;
+  period?: 'daily' | 'monthly' | 'yearly';
+  month?: number;
+  year?: number;
+}
+
+export interface PnlRecord {
+  date?: string;
+  year?: number;
+  month?: number;
+  month_name?: string;
+  symbol: string;
+  total_trades: number;
+  pnl: string;
+}
+
+export interface PnlStatsResponse {
+  period: string;
+  records: PnlRecord[];
+  global_pnl: string;
+}
+
 export interface PaginationLinks {
   first: string;
   last: string;
@@ -456,6 +512,54 @@ export class KripttyApiClient {
 
   async getBotStatus(id: number): Promise<SingleResponse<BotStatus>> {
     return this.request<SingleResponse<BotStatus>>(`/bots/${id}/status`);
+  }
+
+  // Trade endpoints
+  async listTrades(params: TradeListParams): Promise<PaginatedResponse<Trade>> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('exchange_id', params.exchange_id.toString());
+    if (params.symbol) {
+      queryParams.append('symbol', params.symbol);
+    }
+    if (params.from_date) {
+      queryParams.append('from_date', params.from_date);
+    }
+    if (params.to_date) {
+      queryParams.append('to_date', params.to_date);
+    }
+    if (params.per_page !== undefined) {
+      queryParams.append('per_page', params.per_page.toString());
+    }
+    if (params.sort_by) {
+      queryParams.append('sort_by', params.sort_by);
+    }
+    if (params.sort_order) {
+      queryParams.append('sort_order', params.sort_order);
+    }
+    return this.request<PaginatedResponse<Trade>>(`/trades?${queryParams.toString()}`);
+  }
+
+  async getTrade(id: number): Promise<SingleResponse<Trade>> {
+    return this.request<SingleResponse<Trade>>(`/trades/${id}`);
+  }
+
+  async listTradeSymbols(exchangeId: number): Promise<{ data: string[] }> {
+    return this.request<{ data: string[] }>(`/trades/symbols?exchange_id=${exchangeId}`);
+  }
+
+  async getPnlStats(params: PnlStatsParams): Promise<{ data: PnlStatsResponse }> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('exchange_id', params.exchange_id.toString());
+    if (params.period) {
+      queryParams.append('period', params.period);
+    }
+    if (params.month !== undefined) {
+      queryParams.append('month', params.month.toString());
+    }
+    if (params.year !== undefined) {
+      queryParams.append('year', params.year.toString());
+    }
+    return this.request<{ data: PnlStatsResponse }>(`/trades/stats/pnl?${queryParams.toString()}`);
   }
 }
 
