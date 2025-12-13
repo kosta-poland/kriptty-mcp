@@ -1,6 +1,6 @@
 {
   "name": "kriptty-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for Kriptty admin API",
   "main": "dist/index.js",
   "bin": {
@@ -17,16 +17,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/darksiderkos/kriptty-mcp.git"
+    "url": "git+https://github.com/kosta-poland/kriptty-mcp.git"
   },
   "keywords": ["mcp", "kriptty", "admin"],
   "author": "",
   "license": "ISC",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/darksiderkos/kriptty-mcp/issues"
+    "url": "https://github.com/kosta-poland/kriptty-mcp/issues"
   },
-  "homepage": "https://github.com/darksiderkos/kriptty-mcp#readme",
+  "homepage": "https://github.com/kosta-poland/kriptty-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",
     "zod": "^4.1.13"
